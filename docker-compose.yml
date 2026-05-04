@@ -1,0 +1,73 @@
+version: '3.8'
+
+networks:
+  saga-app-net:
+    driver: bridge
+
+services:
+  kafka-app:
+    image: apache/kafka:4.1.1
+    container_name: kafka-app
+    networks:
+      - saga-app-net
+    ports:
+      - "9092:9092"
+    environment:
+      # KRaft & Node Ayarları
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-app:9093
+      # Listeners Ayarları
+      # İki listener tanımla: biri host için, biri Docker içi iletişim için
+      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_INTERNAL://kafka-app:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+
+      # KRaft için rastgele bir Cluster ID (Veya kendin sabit bir UUID verebilirsin)
+      CLUSTER_ID: 'MyKafkaClusterId_76pD5yImJA'
+
+    volumes:
+      - kafka_app_0_data:/var/lib/kafka/data
+
+  kafka-ui-provectus:
+    image: provectuslabs/kafka-ui:latest
+    networks:
+      - saga-app-net
+    container_name: "kafka-ui-provectus"
+    ports:
+      - "8080:8080"
+    restart: "always"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-cluster
+      # UI, Kafka'ya docker container iç ağından (29092) bağlanıyor:
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-app:29092
+      # Opsiyonel: Verileri daha detaylı görmek için
+      # KAFKA_CLUSTERS_0_METRICS_PORT: 9093
+      DYNAMIC_CONFIG_ENABLED: true
+    depends_on:
+      - kafka-app
+
+  pg-database:
+    image: postgres:17.9
+    networks:
+      - saga-app-net
+    container_name: "pg-database"
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: container_test_db
+    ports:
+      - "5632:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+
+volumes:
+  kafka_app_0_data:
+    driver: local
+  postgres_data:
+    driver: local
