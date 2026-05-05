@@ -1,39 +1,48 @@
-# 🎬 Sinema Rezervasyon Sistemi — Saga Pattern (Choreography)
- 
-Microservice mimarisi  **Saga Choreography** design pattern kullanılarak oluşturulmuş sinema koltuk rezervasyon sistemidir.
+## Saga Pattern (Choreography) - Sinema Rezervasyon Sistemi
 
 ---
- 
-## 📋 İçindekiler
+
+### Contents
  
 - [Overview](#overview)
 - [Technical Stack](#technical-stack)
-- [Proje Yapısı](#proje-yapısı)
-- [Kurulum](#kurulum)
-- [Veritabanı Kurulumu](#veritabanı-kurulumu)
-- [API Referansı](#api-referansı)
-- [Koltuk Durum Rehberi](#koltuk-durum-rehberi)
+- [Project Structure](#project-structure)
+- [Booking Transaction Flow](#booking-transaction-flow)
+- [Installation](#installation)
+- [API Reference](#api-referansı)
 
 ---
 
 ## Overview
- 
+
+**Saga Pattern | Choreography** yaklaşımını kullanılarak oluşturulmuş sinema koltuk rezervasyon sistemidir.
+<br/>
+Microservice mimaride distributed transaction işlemini `saga-pattern | choreography` ile yönetmek için hazırlandı.
+
+
 * Bu proje; rezervasyon, ödeme ve koltuk envanteri yönetimini birbirinden bağımsız mikroservisler aracılığıyla gerçekleştirir.
-* Servisler arası iletişim, merkezi bir orkestratör olmaksızın **event-driven** yaklaşımla sağlanır.
+* Servisler arası iletişim, merkezi bir orkestrator olmaksızın **event-driven** yaklaşımla sağlanır.
 * Servisler birbirleriyle doğrudan haberleşmez; ortak event modelleri (booking-common-events) üzerinden mesajlaşır.
- 
+
+<p align="center">
+    <img src="docs/images/saga-architecture-v1.png" alt="full-text-search" width="%100" height="%100" style="border-radius: 10px">
+</p>
+
+---
+
 ---
 
 ## Technical Stack
 
- * Java 21 / Spring Boot 3.5.14
+ * Java 21
+ * Spring Boot 3.5.x
  * Apache Kafka
  * PostgreSQL
- * Docker (Compose)
+ * Docker Compose
 
 ---
  
-## Proje Yapısı
+## Project Structure
  
 ```
 saga-pattern-choreography/
@@ -59,27 +68,99 @@ saga-pattern-choreography/
 ├── docker-compose.yml
 └── .gitignore
 ```
- 
+
+- `booking-common-events/`
+    - Servisler arası ortak event modelleri ve Kafka sabitleri barındırır.
+- `booking-service/`
+    - Rezervasyon isteğini alır, `booking-created` event'i yayınlar.
+    - Port: `9191`
+- `seat-inventory-service/`
+    - `booking-created` event'ini dinler ve koltukları `LOCKED` durumuna geçirir.
+    - `payment-completed` veya `payment-failed` event'leri ile koltuk doğrulama/iptal işlemlerini yönetir.
+    - Port: `9292`
+- `payment-service/`
+    - `seat-locking` event'ini dinler, ödeme işlemini simüle eder.
+    - Başarılıysa `payment-completed`, başarısızsa `payment-failed` event'i yayınlar.
+    - Port: `9393`
+- `init-scripts/init.sql`
+    - PostgreSQL için başlangıç veritabanı tablolarını ve schema yapılandırmasını sağlar.
+- `docker-compose.yml`
+    - Kafka, Kafka UI ve PostgreSQL servislerini başlatır.
+
 ---
 
+## Booking Transaction Flow
 
-## Kurulum
+---
+
+1. Kullanıcı `booking-service` üzerinden `POST /bookings` isteği gönderir.
+2. `booking-service` veritabanına `Booking` kaydını ekler ve `booking-created` event'i yayınlar.
+3. `seat-inventory-service` bu event'i dinler; istenen koltukların tamamı `AVAILABLE` ise onları `LOCKED` yapar.
+4. `seat-inventory-service` daha sonra `seat-locking` event'i yayınlar.
+5. `payment-service` bu event'i alır ve ödemenin işlenmesini simüle eder.
+6. Ödeme başarılıysa `payment-completed`, başarısızsa `payment-failed` event'i yayınlanır.
+7. `seat-inventory-service`:
+    - `payment-completed` alırsa koltukları `RESERVED` yapar.
+    - `payment-failed` alırsa koltukları tekrar `AVAILABLE` yapar ve `seat-released` event'i yayınlar.
+8. `booking-service`:
+    - `payment-completed` alırsa rezervasyonu `CONFIRMED` olarak günceller.
+    - `seat-released` alırsa rezervasyonu `CANCELLED` olarak işaretler.
+
+#### Kafka Topics
+
+- `booking-created`
+- `seat-locking`
+- `seat-released`
+- `payment-completed`
+- `payment-failed`
+
+#### Consumer Groups
+
+- `movie-booking-event-group`
+- `seat-inventory-event-group`
+- `payment-event-group`
+
+
+#### Booking Status
+- `CREATED`
+- `CONFIRMED`
+- `CANCELLED`
+
+#### Seat Status
+- `AVAILABLE`  | Koltuk müsait, rezervasyon yapılabilir
+- `LOCKED`     | Koltuk aktif bir oturum sırasında geçici olarak tutulmuş
+- `RESERVED`   | Koltuk başarıyla rezerve edilmiş ve onaylanmış
+
+#### Payment Status
+- `PENDING`
+- `COMPLETED`
+- `FAILED`
+
+---
+
+## Installation
 
 ### Docker
  
 ```bash
+
 # Repository Clone
 git clone https://github.com/emregltkin/saga-pattern-choreography.git
 cd saga-pattern-choreography
  
-# Servisleri çalıştırır
+# Servisleri çalıştır
 docker compose up -d
 ```
 
-## Database Insert Script
+### Docker Services
+- Kafka: `localhost:9092`
+- Kafka UI: `http://localhost:8080`
+- PostgreSQL: `localhost:5632`
+
+### Database Scripts
  
 `init-scripts/init.sql` dosyası Docker compose ile otomatik olarak çalıştırılır.
-Verileri eklemek için `seat-inventory-service/../data.sql` scripti ile insert edilir.
+Verileri eklemek için `seat-inventory-service/../data.sql` scripti çalıştırılır.
  
 ```sql
 INSERT INTO seat_inventory (theater_id, screen_id, show_id, seat_number, status, booking_code, last_updated) VALUES
@@ -106,7 +187,7 @@ INSERT INTO seat_inventory (theater_id, screen_id, show_id, seat_number, status,
 ('THEATER_PVR_002', 'SCREEN_3', 'SHOW_303', 'C5', 'AVAILABLE', NULL, NOW());
 ```
  
-### Örnek Veri Özeti
+#### Örnek;
  
 | Sinema ID       | Salon    | Seans ID | Film              |
 |-----------------|----------|----------|-------------------|
@@ -116,9 +197,9 @@ INSERT INTO seat_inventory (theater_id, screen_id, show_id, seat_number, status,
  
 ---
 
-## API Referansı
+## API Reference
  
-### Rezervasyon Oluştur
+#### Rezervasyon Oluştur
 
 Belirli bir seans için bir veya birden fazla koltuk rezervasyonu yapar.
 
@@ -127,8 +208,9 @@ POST /bookings
 ```
 
 **cURL:**
- 
+
 ```bash
+
 curl --request POST 'http://localhost:9191/bookings' \
   --header 'Content-Type: application/json' \
   --data '{
@@ -140,15 +222,4 @@ curl --request POST 'http://localhost:9191/bookings' \
 ```
 
 ---
- 
-## Koltuk Durumları
- 
-| Durum       | Açıklama                                                    |
-|-------------|-------------------------------------------------------------|
-| `AVAILABLE` | Koltuk müsait, rezervasyon yapılabilir                      |
-| `LOCKED`    | Koltuk aktif bir oturum sırasında geçici olarak tutulmuş    |
-| `RESERVED`  | Koltuk başarıyla rezerve edilmiş ve onaylanmış              |
- 
----
-
 
