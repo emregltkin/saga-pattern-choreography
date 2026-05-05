@@ -117,9 +117,9 @@ saga-pattern-choreography/
 
 #### Consumer Groups
 
-- `movie-booking-event-group`
-- `seat-inventory-event-group`
-- `payment-event-group`
+- `movie-booking-consumer-group`
+- `seat-inventory-consumer-group`
+- `payment-consumer-group`
 
 
 #### Booking Status

@@ -20,7 +20,7 @@ public class PaymentEventConsumer {
 
     @KafkaListener(topics = KafkaConstants.Topics.PAYMENT_COMPLETED, groupId = KafkaConstants.ConsumerGroups.SEAT_INVENTORY)
     public void consumePaymentCompletedEvents(PaymentCompletedEvent event,
-                                           @Header(KafkaHeaders.RECEIVED_KEY) String key) {
+                                              @Header(KafkaHeaders.RECEIVED_KEY) String key) {
         try {
             log.info("Consuming... Event:payment-completed for bookingCode: {}  key:{}", event.bookingCode(), key);
             seatInventoryService.handleSeatsReservedOnPaymentCompleted(event.bookingCode());

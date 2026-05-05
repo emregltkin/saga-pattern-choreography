@@ -17,8 +17,8 @@ public class KafkaConstants {
 
     @UtilityClass
     public static class ConsumerGroups {
-        public static final String MOVIE_BOOKING = "movie-booking-event-group";
-        public static final String SEAT_INVENTORY = "seat-inventory-event-group";
-        public static final String PAYMENT = "payment-event-group";
+        public static final String MOVIE_BOOKING = "movie-booking-consumer-group";
+        public static final String SEAT_INVENTORY = "seat-inventory-consumer-group";
+        public static final String PAYMENT = "payment-consumer-group";
     }
 }
