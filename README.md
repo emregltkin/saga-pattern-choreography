@@ -9,7 +9,7 @@
 - [Project Structure](#project-structure)
 - [Booking Transaction Flow](#booking-transaction-flow)
 - [Installation](#installation)
-- [API Reference](#api-referansı)
+- [API Reference](#api-reference)
 
 ---
 
@@ -25,10 +25,8 @@ Microservice mimaride distributed transaction işlemini `saga-pattern | choreogr
 * Servisler birbirleriyle doğrudan haberleşmez; ortak event modelleri (booking-common-events) üzerinden mesajlaşır.
 
 <p align="center">
-    <img src="docs/images/saga-architecture-v1.png" alt="full-text-search" width="%100" height="%100" style="border-radius: 10px">
+    <img src="docs/images/saga-architecture-v1.png" alt="Saga Architecture Diagram" width="%100" height="%100" style="border-radius: 10px">
 </p>
-
----
 
 ---
 
