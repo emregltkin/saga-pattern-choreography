@@ -62,8 +62,11 @@ saga-pattern-choreography/
 ├── seat-inventory-service/      # Koltuk envanter servisi
 │   └── src/main/java/.../
 │
-├── init-scripts/
-│   └── init.sql                 # Veritabanı init scripti
+├── docs/                        
+│   ├── init-scripts/
+│   │   └── init.sql             # Veritabanı init scripti
+│   └── insert-scripts/
+│       └── data.sql             # Veri scripti
 │
 ├── docker-compose.yml
 └── .gitignore
@@ -159,8 +162,8 @@ docker compose up -d
 
 ### Database Scripts
  
-`init-scripts/init.sql` dosyası Docker compose ile otomatik olarak çalıştırılır.
-Verileri eklemek için `seat-inventory-service/../data.sql` scripti çalıştırılır.
+`docs/init-scripts/init.sql` dosyası Docker compose ile otomatik olarak çalıştırılır.
+Verileri eklemek için `docs/insert-scripts/data.sql` scripti çalıştırılır.
  
 ```sql
 INSERT INTO seat_inventory (theater_id, screen_id, show_id, seat_number, status, booking_code, last_updated) VALUES
