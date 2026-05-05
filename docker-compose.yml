@@ -24,6 +24,12 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      # Single node icin zorunlu
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_NUM_PARTITIONS: 3
 
       # KRaft için rastgele bir Cluster ID (Veya kendin sabit bir UUID verebilirsin)
       CLUSTER_ID: 'MyKafkaClusterId_76pD5yImJA'
@@ -44,7 +50,7 @@ services:
       # UI, Kafka'ya docker container iç ağından (29092) bağlanıyor:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-app:29092
       # Opsiyonel: Verileri daha detaylı görmek için
-      # KAFKA_CLUSTERS_0_METRICS_PORT: 9093
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9093
       DYNAMIC_CONFIG_ENABLED: true
     depends_on:
       - kafka-app
