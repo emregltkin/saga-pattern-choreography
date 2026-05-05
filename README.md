@@ -25,7 +25,7 @@ Microservice mimaride distributed transaction işlemini `saga-pattern | choreogr
 * Servisler birbirleriyle doğrudan haberleşmez; ortak event modelleri (booking-common-events) üzerinden mesajlaşır.
 
 <p align="center">
-    <img src="docs/images/saga-architecture-v1.png" alt="Saga Architecture Diagram" width="%100" height="%100" style="border-radius: 10px">
+    <img src="docs/images/saga-architecture-v2.png" alt="Saga Architecture Diagram" width="%100" height="%100" style="border-radius: 10px">
 </p>
 
 ---
