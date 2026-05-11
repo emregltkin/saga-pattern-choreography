@@ -1,0 +1,87 @@
+name: Fortify FoD SAST Tarama
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  fortify-sast:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # SARIF yüklemek için
+      contents: read
+
+    steps:
+      # 1. Kodu çek
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Java 21 kurulumu
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'           # Eclipse Temurin — Java 21 LTS için önerilen
+          cache: maven                       # Maven bağımlılıklarını cache'le
+
+      # 3. Maven build (Java 21 uyumlu flag'ler ile)
+      - name: Build with Maven
+        run: |
+          mvn clean package \
+            -DskipTests \
+            --no-transfer-progress \
+            -Dmaven.compiler.source=21 \
+            -Dmaven.compiler.target=21 \
+            -Dmaven.compiler.release=21
+
+      # 4. Fortify SCA — Java 21 kaynak dili ayarı
+      #    Java 21 Virtual Threads (Project Loom) ve Record'lar için
+      #    Fortify 23.2+ gereklidir (Java 21 desteği bu sürümle geldi)
+      - name: Fortify FoD SAST Scan
+        uses: fortify/github-action@v1
+        with:
+          sast-scan: true
+        env:
+          FOD_URL:           ${{ secrets.FOD_URL }}
+          FOD_CLIENT_ID:     ${{ secrets.FOD_CLIENT_ID }}
+          FOD_CLIENT_SECRET: ${{ secrets.FOD_CLIENT_SECRET }}
+          FOD_TENANT:        ${{ secrets.FOD_TENANT }}
+          FOD_RELEASE:       ${{ github.repository }}:${{ github.ref_name }}
+
+          # Java 21 kaynak dili — Virtual Threads, Records, Sealed Classes
+          EXTRA_SCA_ARGS: >
+            -source-version 21
+            -Dcom.fortify.sca.EnableDOMModeling=true
+            -Dcom.fortify.sca.follow.imports=true
+            -Dcom.fortify.sca.Phase0HigherOrder.Languages=java
+            -Dcom.fortify.sca.exclude=target/**,**/*Test.java,**/*IT.java
+            -Dcom.fortify.sca.MaxHeap=4G
+
+          # Java 21 Virtual Thread taint analizi
+          # Spring Boot 3.x + Spring Security 6.x annotation desteği
+          EXTRA_PACKAGE_REQUIREMENTS: |
+            com.fortify.sca.EnableDataflowAnalysis=true
+            com.fortify.sca.TrackVirtualThreads=true
+
+      # 5. Security Gate — kritik bulgu varsa pipeline'ı durdur
+      - name: Fortify Security Gate
+        uses: fortify/github-action/fod-check-policy@v1
+        with:
+          fail-on-severity: critical,high
+          include-suppressed: false
+        env:
+          FOD_URL:           ${{ secrets.FOD_URL }}
+          FOD_CLIENT_ID:     ${{ secrets.FOD_CLIENT_ID }}
+          FOD_CLIENT_SECRET: ${{ secrets.FOD_CLIENT_SECRET }}
+          FOD_TENANT:        ${{ secrets.FOD_TENANT }}
+          FOD_RELEASE:       ${{ github.repository }}:${{ github.ref_name }}
+
+      # 6. SARIF sonucu GitHub Security Code Scanning'e yükle
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()                         # Tarama başarısız olsa bile yükle
+        with:
+          sarif_file: ./fortify.sarif
+          category: fortify-fod
